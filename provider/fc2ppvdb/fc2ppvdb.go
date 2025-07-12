@@ -28,7 +28,7 @@ const (
 
 const (
 	baseURL   = "https://fc2ppvdb.com/"
-	movieURL  = "https://fc2ppvdb.com/articles/%s/"
+	movieURL  = "https://fc2ppvdb.com/articles/%s"
 	searchURL = "https://fc2ppvdb.com/search?stype=title&keyword=%s"
 )
 
