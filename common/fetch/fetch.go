@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/cookiejar"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/go-cleanhttp"
@@ -113,7 +114,7 @@ func (f *Fetcher) Post(url string, body io.Reader, opts ...Option) (resp *http.R
 
 func (f *Fetcher) Request(method, url string, body io.Reader, opts ...Option) (resp *http.Response, err error) {
 	var req *http.Request
-	if req, err = http.NewRequest(method, url, body); err != nil {
+	if req, err = http.NewRequest(method, strings.TrimSpace(url), body); err != nil {
 		return
 	}
 	c := &Context{
