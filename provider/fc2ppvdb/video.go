@@ -130,11 +130,8 @@ func (fc2ppvdbMovie *FC2PPVDBMovie) GetMovieInfoByURL(rawURL string) (info *mode
 	// 是否有码
 	c.OnXML(`//div[contains(text(),"モザイク：")]/span`,
 		func(e *colly.XMLElement) {
-			uncensoredStr := strings.TrimSpace(e.Text)
-			if uncensoredStr == "無" {
-				info.Label = "无码"
-			} else if uncensoredStr == "有" {
-				info.Label = "有码"
+			if uncensoredStr := strings.TrimSpace(e.Text); uncensoredStr != "" {
+				info.Label = uncensoredStr + "碼"
 			}
 		})
 
