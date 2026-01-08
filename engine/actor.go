@@ -6,6 +6,9 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/metatube-community/metatube-sdk-go/provider/fc2"
+	"github.com/metatube-community/metatube-sdk-go/provider/fc2hub"
+	"github.com/metatube-community/metatube-sdk-go/provider/fc2ppvdb"
 	"golang.org/x/text/language"
 	"gorm.io/gorm/clause"
 
@@ -162,7 +165,8 @@ func (e *Engine) getActorInfoWithCallback(provider mt.ActorProvider, id string, 
 	}
 	defer func() {
 		// gfriends actor image injection for JAV actor providers.
-		if err == nil && info != nil && provider.Language() == language.Japanese {
+		if err == nil && info != nil && provider.Language() == language.Japanese &&
+			(provider.Name() != fc2.Name && provider.Name() != fc2hub.Name && provider.Name() != fc2ppvdb.Name) {
 			if gInfo, gErr := e.MustGetActorProviderByName(gfriends.Name).GetActorInfoByID(info.Name); gErr == nil && len(gInfo.Images) > 0 {
 				info.Images = append(gInfo.Images, info.Images...)
 			}

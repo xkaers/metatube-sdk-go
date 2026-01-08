@@ -106,6 +106,8 @@ func Router(names ...string) *gin.Engine {
 	// Apply to all relevant FC2 providers
 	for _, name := range []string{fc2.Name, fc2hub.Name, fc2ppvdb.Name} {
 		opts = append(opts, engine.WithMovieProviderConfig(name, dbConfig))
+		// Also apply to actor providers for those that support both
+		opts = append(opts, engine.WithActorProviderConfig(name, dbConfig))
 	}
 
 	app := engine.New(db, opts...)

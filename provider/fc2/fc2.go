@@ -21,6 +21,8 @@ import (
 
 var (
 	_ provider.MovieProvider = (*FC2)(nil)
+	_ provider.ActorProvider = (*FC2)(nil)
+	_ provider.ActorSearcher = (*FC2)(nil)
 	_ provider.ConfigSetter  = (*FC2)(nil)
 )
 
@@ -221,6 +223,40 @@ func (fc2 *FC2) GetMovieInfoByURL(rawURL string) (info *model.MovieInfo, err err
 		err = vErr
 	}
 	return
+}
+
+func (fc2 *FC2) NormalizeActorID(id string) string {
+	return id // No specific normalization for now
+}
+
+func (fc2 *FC2) ParseActorIDFromURL(rawURL string) (string, error) {
+	homepage, err := url.Parse(rawURL)
+	if err != nil {
+		return "", err
+	}
+	return path.Base(homepage.Path), nil
+}
+
+func (fc2 *FC2) GetActorInfoByID(id string) (*model.ActorInfo, error) {
+	if fc2.db == nil {
+		return nil, provider.ErrProviderNotFound
+	}
+	return fc2.db.GetActorInfo(id)
+}
+
+func (fc2 *FC2) GetActorInfoByURL(rawURL string) (*model.ActorInfo, error) {
+	id, err := fc2.ParseActorIDFromURL(rawURL)
+	if err != nil {
+		return nil, err
+	}
+	return fc2.GetActorInfoByID(id)
+}
+
+func (fc2 *FC2) SearchActor(keyword string) ([]*model.ActorSearchResult, error) {
+	if fc2.db == nil {
+		return nil, provider.ErrProviderNotFound
+	}
+	return fc2.db.SearchActors(keyword)
 }
 
 func init() {

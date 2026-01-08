@@ -3,6 +3,7 @@ package fc2db
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	_ "time"
 
@@ -33,8 +34,10 @@ func (Article) TableName() string {
 }
 
 type Actress struct {
-	ID   string `gorm:"column:id;primaryKey"`
-	Name string `gorm:"column:name"`
+	ID        string `gorm:"column:id;primaryKey"`
+	Name      string `gorm:"column:name"`
+	AliasName string `gorm:"column:alias_name"`
+	URL       string `gorm:"column:url"`
 }
 
 func (Actress) TableName() string {
@@ -109,7 +112,7 @@ func (m *Manager) GetMovieInfo(id string) (*model.MovieInfo, error) {
 
 	actorNames := make([]string, len(actresses))
 	for i, actress := range actresses {
-		actorNames[i] = fmt.Sprintf("%s(%s)", actress.Name, actress.ID)
+		actorNames[i] = fmt.Sprintf("%s[%s]", actress.Name, actress.ID)
 	}
 
 	// Map to MovieInfo
@@ -134,6 +137,67 @@ func (m *Manager) GetMovieInfo(id string) (*model.MovieInfo, error) {
 	}
 
 	return info, nil
+}
+
+func (m *Manager) GetActorInfo(id string) (*model.ActorInfo, error) {
+	// Handle composite ID: Name[ID]
+	if ss := regexp.MustCompile(`^.+?\[(.+)\]$`).FindStringSubmatch(id); len(ss) == 2 {
+		id = ss[1]
+	}
+
+	var actress Actress
+	if err := m.db.First(&actress, "id = ?", id).Error; err != nil {
+		if err := m.db.First(&actress, "name LIKE ?", "%"+id+"%").Error; err != nil {
+			return nil, err
+		}
+	}
+
+	info := &model.ActorInfo{
+		ID:       actress.ID,
+		Name:     actress.Name,
+		Provider: "FC2",
+		Homepage: actress.URL,
+		Images:   []string{}, // Add image URL if available in DB
+	}
+	if info.Homepage == "" {
+		info.Homepage = fmt.Sprintf("https://fc2ppvdb.com/actresses/%s/", actress.ID)
+	}
+	if actress.AliasName != "" {
+		info.Aliases = strings.Fields(actress.AliasName)
+	}
+	return info, nil
+}
+
+func (m *Manager) SearchActors(keyword string) (results []*model.ActorSearchResult, err error) {
+	// Handle composite ID: Name[ID]
+	if ss := regexp.MustCompile(`^.+?\[(.+)\]$`).FindStringSubmatch(keyword); len(ss) == 2 {
+		keyword = ss[1]
+	}
+
+	var actresses []Actress
+	if err := m.db.Where("id = ?", keyword).Find(&actresses).Error; err != nil {
+		if err := m.db.Where("name LIKE ?", "%"+keyword+"%").Find(&actresses).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	for _, actress := range actresses {
+		result := &model.ActorSearchResult{
+			ID:       actress.ID,
+			Name:     actress.Name,
+			Provider: "FC2",
+			Homepage: actress.URL,
+			Images:   []string{},
+		}
+		if result.Homepage == "" {
+			result.Homepage = fmt.Sprintf("https://fc2ppvdb.com/actresses/%s/", actress.ID)
+		}
+		if actress.AliasName != "" {
+			result.Aliases = strings.Fields(actress.AliasName)
+		}
+		results = append(results, result)
+	}
+	return
 }
 
 func parseTags(tags string) []string {
