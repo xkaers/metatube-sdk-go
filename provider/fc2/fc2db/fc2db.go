@@ -165,6 +165,23 @@ func (m *Manager) GetActorInfo(id string) (*model.ActorInfo, error) {
 	if actress.AliasName != "" {
 		info.Aliases = strings.Fields(actress.AliasName)
 	}
+
+	// Get movies this actress appeared in
+	var articles []Article
+	m.db.Table("t_article").
+		Joins("JOIN t_article_actress ON t_article_actress.article_code = t_article.code").
+		Where("t_article_actress.actress_id = ?", actress.ID).
+		Find(&articles)
+
+	if len(articles) > 0 {
+		var lines []string
+		lines = append(lines, "该演员还出演过以下作品：")
+		for _, a := range articles {
+			lines = append(lines, fmt.Sprintf("[FC2-%s] %s", a.Code, a.Title))
+		}
+		info.Summary = strings.Join(lines, "\n")
+	}
+
 	return info, nil
 }
 
@@ -175,7 +192,7 @@ func (m *Manager) SearchActors(keyword string) (results []*model.ActorSearchResu
 	}
 
 	var actresses []Actress
-	if err := m.db.Where("id = ?", keyword).Find(&actresses).Error; err != nil {
+	if err := m.db.Where("id = ?", keyword).Find(&actresses).Error; err != nil || len(actresses) == 0 {
 		if err := m.db.Where("name LIKE ?", "%"+keyword+"%").Find(&actresses).Error; err != nil {
 			return nil, err
 		}
