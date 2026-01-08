@@ -15,6 +15,7 @@ import (
 	"github.com/metatube-community/metatube-sdk-go/common/parser"
 	"github.com/metatube-community/metatube-sdk-go/model"
 	"github.com/metatube-community/metatube-sdk-go/provider"
+	"github.com/metatube-community/metatube-sdk-go/provider/fc2/fc2db"
 	"github.com/metatube-community/metatube-sdk-go/provider/fc2/fc2util"
 	"github.com/metatube-community/metatube-sdk-go/provider/internal/scraper"
 )
@@ -22,6 +23,7 @@ import (
 var (
 	_ provider.MovieProvider = (*FC2HUB)(nil)
 	_ provider.MovieSearcher = (*FC2HUB)(nil)
+	_ provider.ConfigSetter  = (*FC2HUB)(nil)
 )
 
 const (
@@ -37,10 +39,23 @@ const (
 
 type FC2HUB struct {
 	*scraper.Scraper
+	db *fc2db.Manager
 }
 
 func New() *FC2HUB {
-	return &FC2HUB{scraper.NewDefaultScraper(Name, baseURL, Priority, language.Japanese)}
+	return &FC2HUB{Scraper: scraper.NewDefaultScraper(Name, baseURL, Priority, language.Japanese)}
+}
+
+func (fc2hub *FC2HUB) SetConfig(c provider.Config) error {
+	if c.Has(fc2db.ConfigKeyDatabasePath) {
+		dbPath, _ := c.GetString(fc2db.ConfigKeyDatabasePath)
+		db, err := fc2db.New(dbPath)
+		if err != nil {
+			return err
+		}
+		fc2hub.db = db
+	}
+	return nil
 }
 
 func (fc2hub *FC2HUB) GetMovieInfoByID(id string) (info *model.MovieInfo, err error) {
@@ -69,6 +84,20 @@ func (fc2hub *FC2HUB) GetMovieInfoByURL(rawURL string) (info *model.MovieInfo, e
 		return
 	}
 
+	// 1. Query Local Database
+	var dbInfo *model.MovieInfo
+	if fc2hub.db != nil {
+		// id is composite: videoID-fc2ID
+		parts := strings.Split(id, "-")
+		if len(parts) == 2 {
+			if info, err := fc2hub.db.GetMovieInfo(parts[1]); err == nil && info.IsValid() {
+				info.ID = id // Restore composite ID
+				info.Provider = fc2hub.Name()
+				dbInfo = info
+			}
+		}
+	}
+
 	info = &model.MovieInfo{
 		ID:            id, // Dual-ID (id+number)
 		Provider:      fc2hub.Name(),
@@ -76,6 +105,14 @@ func (fc2hub *FC2HUB) GetMovieInfoByURL(rawURL string) (info *model.MovieInfo, e
 		Actors:        []string{},
 		PreviewImages: []string{},
 		Genres:        []string{},
+	}
+
+	if dbInfo != nil {
+		*info = *dbInfo
+		// FC2HUB has slightly different ID/Homepage logic, ensure we keep correct one
+		info.ID = id
+		info.Provider = fc2hub.Name()
+		info.Homepage = rawURL
 	}
 
 	c := fc2hub.ClonedCollector()
@@ -210,6 +247,10 @@ func (fc2hub *FC2HUB) GetMovieInfoByURL(rawURL string) (info *model.MovieInfo, e
 	})
 
 	err = c.Visit(info.Homepage)
+	// If scraping failed but we have DB info, ignore error
+	if err != nil && dbInfo != nil {
+		err = nil
+	}
 	return
 }
 
