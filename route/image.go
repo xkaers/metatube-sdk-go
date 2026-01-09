@@ -14,6 +14,9 @@ import (
 	"github.com/metatube-community/metatube-sdk-go/imageutil"
 	"github.com/metatube-community/metatube-sdk-go/imageutil/badge"
 	mt "github.com/metatube-community/metatube-sdk-go/provider"
+	"github.com/metatube-community/metatube-sdk-go/provider/fc2"
+	"github.com/metatube-community/metatube-sdk-go/provider/fc2hub"
+	"github.com/metatube-community/metatube-sdk-go/provider/fc2ppvdb"
 )
 
 type imageType uint8
@@ -71,7 +74,11 @@ func getImage(app *engine.Engine, typ imageType) gin.HandlerFunc {
 		var isActorProvider bool
 		switch {
 		case app.IsActorProvider(uri.Provider):
-			isActorProvider = true
+			if uri.Provider == fc2.Name || uri.Provider == fc2hub.Name || uri.Provider == fc2ppvdb.Name {
+				isActorProvider = false
+			} else {
+				isActorProvider = true
+			}
 		case app.IsMovieProvider(uri.Provider):
 			isActorProvider = false
 		default:
