@@ -173,12 +173,22 @@ func (fc2 *FC2) GetMovieInfoByURL(rawURL string) (info *model.MovieInfo, err err
 
 	// Cover (fallbacks)
 	c.OnScraped(func(_ *colly.Response) {
+		var re = regexp.MustCompile(`https://contents-thumbnail2\.fc2\.com/[^/]+/(.*)`)
+
+		var targetURL string
 		if info.ThumbURL != "" {
-			info.CoverURL = info.ThumbURL
+			targetURL = info.ThumbURL
 		} else if len(info.PreviewImages) > 0 {
-			// Use the first preview image as cover due to
-			// thumb image's poor resolution.
-			info.CoverURL = info.PreviewImages[0]
+			targetURL = info.PreviewImages[0]
+		}
+
+		// 2. 统一执行正则转换逻辑
+		if targetURL != "" {
+			if match := re.FindStringSubmatch(targetURL); len(match) > 1 {
+				info.CoverURL = "https://" + match[1]
+			} else {
+				info.CoverURL = targetURL
+			}
 		}
 	})
 
