@@ -40,7 +40,7 @@ func (e *Engine) searchActorFromDB(keyword string, provider mt.Provider) (result
 
 func (e *Engine) searchActor(keyword string, provider mt.Provider, fallback bool) ([]*model.ActorSearchResult, error) {
 	innerSearch := func(keyword string) (results []*model.ActorSearchResult, err error) {
-		if provider.Name() == gfriends.Name {
+		if provider.Name() == gfriends.Name || provider.Name() == fc2.Name {
 			return provider.(mt.ActorSearcher).SearchActor(keyword)
 		}
 		if searcher, ok := provider.(mt.ActorSearcher); ok {
@@ -160,7 +160,7 @@ func (e *Engine) getActorInfoWithCallback(provider mt.ActorProvider, id string, 
 			err = mt.ErrIncompleteMetadata
 		}
 	}()
-	if provider.Name() == gfriends.Name {
+	if provider.Name() == gfriends.Name || provider.Name() == fc2.Name {
 		return provider.GetActorInfoByID(id)
 	}
 	defer func() {
