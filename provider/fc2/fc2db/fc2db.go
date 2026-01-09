@@ -37,6 +37,7 @@ type Actress struct {
 	ID        string `gorm:"column:id;primaryKey"`
 	Name      string `gorm:"column:name"`
 	AliasName string `gorm:"column:alias_name"`
+	CoverUrl  string `gorm:"column:cover_url"`
 	URL       string `gorm:"column:url"`
 }
 
@@ -145,6 +146,11 @@ func (m *Manager) GetActorInfo(id string) (*model.ActorInfo, error) {
 		id = ss[1]
 	}
 
+	var aa ArticleActress
+	if err := m.db.First(&aa, "article_code = ?", id).Error; err == nil {
+		id = aa.ActressID
+	}
+
 	var actress Actress
 	if err := m.db.First(&actress, "id = ?", id).Error; err != nil {
 		if err := m.db.First(&actress, "name LIKE ?", "%"+id+"%").Error; err != nil {
@@ -157,7 +163,7 @@ func (m *Manager) GetActorInfo(id string) (*model.ActorInfo, error) {
 		Name:     actress.Name,
 		Provider: "FC2",
 		Homepage: actress.URL,
-		Images:   []string{}, // Add image URL if available in DB
+		Images:   []string{actress.CoverUrl},
 	}
 	if info.Homepage == "" {
 		info.Homepage = fmt.Sprintf("https://fc2ppvdb.com/actresses/%s/", actress.ID)
@@ -191,6 +197,11 @@ func (m *Manager) SearchActors(keyword string) (results []*model.ActorSearchResu
 		keyword = ss[1]
 	}
 
+	var aa ArticleActress
+	if err := m.db.First(&aa, "article_code = ?", keyword).Error; err == nil {
+		keyword = aa.ActressID
+	}
+
 	var actresses []Actress
 	if err := m.db.Where("id = ?", keyword).Find(&actresses).Error; err != nil || len(actresses) == 0 {
 		if err := m.db.Where("name LIKE ?", "%"+keyword+"%").Find(&actresses).Error; err != nil {
@@ -204,7 +215,7 @@ func (m *Manager) SearchActors(keyword string) (results []*model.ActorSearchResu
 			Name:     actress.Name,
 			Provider: "FC2",
 			Homepage: actress.URL,
-			Images:   []string{},
+			Images:   []string{actress.CoverUrl},
 		}
 		if result.Homepage == "" {
 			result.Homepage = fmt.Sprintf("https://fc2ppvdb.com/actresses/%s/", actress.ID)
